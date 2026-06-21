@@ -1,0 +1,19 @@
+{
+  "name": "vibemission",
+  "owner": {
+    "name": "VibeMission",
+    "email": "team@cleanmission.co.kr"
+  },
+  "description": "VibeMission — AI 코딩 실력을 과정까지 검증하는 코딩 테스트. 점수·등급·전세계 랭킹.",
+  "plugins": [
+    {
+      "name": "vibemission",
+      "source": "./vibemission",
+      "description": "AI로 코딩하는 과정(프롬프트·검증)을 기록해 점수·등급 카드를 만들어 줍니다. cleanmissionai.kr",
+      "version": "1.0.0",
+      "author": { "name": "VibeMission" },
+      "homepage": "https://cleanmissionai.kr",
+      "license": "MIT"
+    }
+  ]
+}
