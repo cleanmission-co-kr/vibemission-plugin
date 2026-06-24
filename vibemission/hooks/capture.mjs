@@ -3,12 +3,21 @@
  * VibeMission capture hook (dependency-free).
  * Claude Code 훅 페이로드(stdin JSON)를 받아 이벤트를 web /api/ingest 로 전송한다.
  * 원칙: 절대 세션을 막지 않는다. 어떤 에러든 삼키고 exit 0.
+ * 토큰 해석: 환경변수 → ~/.vibemission/config.json (= `/vibemission:exam start <토큰>` 이 저장).
+ *   셸 export 없이도, 시험 시작 한 번이면 이후 모든 도구 사용이 자동 캡처된다.
  * 토큰 없으면(시험 밖) 무해하게 no-op.
  */
 import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-const TOKEN = process.env.VIBEMISSION_TOKEN || process.env.HRMISSION_TOKEN;
-const WEB = (process.env.VIBEMISSION_WEB_URL || process.env.HRMISSION_WEB_URL || "https://cleanmissionai.kr").replace(/\/$/, "");
+function fromConfig() {
+  try { return JSON.parse(readFileSync(join(homedir(), ".vibemission", "config.json"), "utf8")) || {}; }
+  catch { return {}; }
+}
+const cfg = fromConfig();
+const TOKEN = process.env.VIBEMISSION_TOKEN || process.env.HRMISSION_TOKEN || cfg.token || "";
+const WEB = (process.env.VIBEMISSION_WEB_URL || process.env.HRMISSION_WEB_URL || cfg.web || "https://cleanmissionai.kr").replace(/\/$/, "");
 const INGEST = process.env.VIBEMISSION_INGEST_URL || process.env.HRMISSION_INGEST_URL || (TOKEN ? `${WEB}/api/ingest` : null);
 
 const done = () => process.exit(0); // 항상 통과
