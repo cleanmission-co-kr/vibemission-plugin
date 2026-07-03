@@ -1,7 +1,7 @@
 {
   "name": "vibemission",
   "description": "AI로 코딩하는 과정을 기록해 점수·등급·전세계 랭킹 카드를 만들어 줍니다. 의존성 없음(node만 필요).",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": { "name": "VibeMission" },
   "homepage": "https://cleanmissionai.kr",
   "license": "MIT",

@@ -36,12 +36,15 @@ async function api(path, init = {}) {
 
 // ── 훅 독립 캡처: 로컬 Claude Code 세션 로그(JSONL)를 찾아 파싱 → 업로드 ──
 // 훅이 세션에 안 켜졌어도(설치 후 재시작 안 함) 제출 시 트레일 전체를 보장한다.
-function findTranscript() {
+// ⚠️ 반드시 '이 응시'의 세션만 골라야 함 — 기기 전체 최신 파일을 잡으면 다른 창/프로젝트의
+//    프롬프트·코드가 남의 응시로 업로드된다(오채점 + 사적 코드 유출). 그래서 응시 토큰이나
+//    'vibemission:exam start' 마커가 들어있는 JSONL을 우선한다.
+function scanTranscripts() {
   const root = join(homedir(), ".claude", "projects");
-  if (!existsSync(root)) return null;
-  let best = null, bestM = 0;
+  if (!existsSync(root)) return [];
+  const found = [];
   let dirs = [];
-  try { dirs = readdirSync(root); } catch { return null; }
+  try { dirs = readdirSync(root); } catch { return []; }
   for (const d of dirs) {
     const dp = join(root, d);
     let files = [];
@@ -50,10 +53,22 @@ function findTranscript() {
       if (!f.endsWith(".jsonl")) continue;
       const fp = join(dp, f);
       let m = 0; try { m = statSync(fp).mtimeMs; } catch { continue; }
-      if (m > bestM) { bestM = m; best = fp; }
+      found.push({ fp, m });
     }
   }
-  return best;
+  return found.sort((a, b) => b.m - a.m);
+}
+
+// 이 응시 세션의 트랜스크립트를 특정. 토큰/시작마커 포함 파일을 최근순으로 우선, 없으면 최신 파일.
+function findTranscript() {
+  const all = scanTranscripts();
+  if (!all.length) return null;
+  const marker = "vibemission:exam start";
+  for (const { fp } of all) {
+    let raw = ""; try { raw = readFileSync(fp, "utf8"); } catch { continue; }
+    if ((TOKEN && raw.includes(TOKEN)) || raw.includes(marker)) return fp;
+  }
+  return all[0].fp; // 폴백(경고와 함께) — 어느 파일에도 마커가 없을 때만
 }
 
 function clip(v, n) { const s = typeof v === "string" ? v : JSON.stringify(v); return s.length > n ? s.slice(0, n) : s; }
@@ -61,8 +76,12 @@ function clip(v, n) { const s = typeof v === "string" ? v : JSON.stringify(v); r
 function parseTranscript(path) {
   let raw = "";
   try { raw = readFileSync(path, "utf8"); } catch { return []; }
+  let lines = raw.split("\n");
+  // 시험 시작 지점 이후만 채점 대상(시작 전 잡담/다른 작업 제외). 토큰/시작마커가 처음 등장하는 줄부터.
+  const startAt = lines.findIndex((ln) => ln && ((TOKEN && ln.includes(TOKEN)) || ln.includes("vibemission:exam start")));
+  if (startAt > 0) lines = lines.slice(startAt);
   const out = [];
-  for (const ln of raw.split("\n")) {
+  for (const ln of lines) {
     if (!ln.trim()) continue;
     let o; try { o = JSON.parse(ln); } catch { continue; }
     const msg = o.message || o;
